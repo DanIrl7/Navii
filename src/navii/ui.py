@@ -28,6 +28,8 @@ class UIEngine:
         self.SELECTION = 4
         curses.init_pair(self.SELECTION, curses.COLOR_BLACK, curses.COLOR_CYAN)
 
+        self.error_message = None
+
     def cleanup(self):
         curses.nocbreak()
         self.stdscr.keypad(False)
@@ -40,16 +42,16 @@ class UIEngine:
     def map_key(self, key):
         # CONVERTS USER KEY INPUT INTO ACTION 
         # Up
-        if key == curses.KEY_UP or key == ord("k"):
+        if key == curses.KEY_UP or key == ord("k") or key == 450:
             return "up"
         # Down
-        elif key == curses.KEY_DOWN or key == ord("j"):
+        elif key == curses.KEY_DOWN or key == ord("j") or key == 456:
             return "down"
         # Left / Go back
-        elif key == curses.KEY_LEFT or key == ord("h") or key == curses.KEY_BACKSPACE or key == ord('\b'):
+        elif key == curses.KEY_LEFT or key == ord("h") or key == curses.KEY_BACKSPACE or key == ord('\b') or key == 452:
             return "back"
         # Right / Enter directory
-        elif key == curses.KEY_RIGHT or key == ord("l") or key == ord('\n'):
+        elif key == curses.KEY_RIGHT or key == ord("l") or key == ord('\n') or key == 454:
             return "enter"
         # Confirm selection
         elif key == ord(' '):
@@ -100,8 +102,12 @@ class UIEngine:
         self.draw_list(items, start_row=1)
 
         # Footer: Keybindings
-        footer_text = "↑↓: Navigate | Enter: Open | q: Quit"
+        footer_text = "↑↓/[k][j]: Navigate | Enter[l]: Open | ⌫ Backspace: Go Back | q: Quit"
         self.stdscr.addstr(self.max_y - 1, 0, footer_text, curses.color_pair(self.YELLOW))
+
+        # If there's an error message, display it above the footer
+        if self.error_message:
+            self.stdscr.addstr(self.max_y - 2, 0, f"Error: {self.error_message}", curses.color_pair(self.YELLOW))
     
         self.refresh()
 

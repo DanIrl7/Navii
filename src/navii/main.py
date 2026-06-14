@@ -1,5 +1,7 @@
 import curses
+import os
 import sys
+import argparse
 from .ui import UIEngine
 from .navigator import Navigator
 
@@ -13,14 +15,12 @@ def main(stdscr):
         # 1. Get current path and items from Navigator
         current_path = navigator.get_current_path()
         list_result = navigator.list_items()
+        ui.error_message = None
 
         if not list_result["success"]:
-            # Handle error (e.g., permission denied)
-            # For now, let's just quit or show an error
-            # TODO: Improve error display in UI
-            ui.cleanup()
+            ui.error_message = list_result["error"]
             print(f"Error: {list_result['error']}", file=sys.stderr)
-            sys.exit(1)
+            # sys.exit(1)
         
         items = list_result["items"]
         
@@ -46,22 +46,34 @@ def main(stdscr):
                     ui.selection_index = 0
                     ui.scroll_position = 0
                 else:
-                    # TODO: Display nav_result["error"] in UI
-                    pass
+                    ui.error_message = nav_result["error"]
             # TODO: Handle "confirm" action to output path and exit
-            pass
+        elif action == "confirm":
+            if items:
+                item_to_confirm = items[ui.selection_index]
+                final_path = os.path.join(current_path, item_to_confirm)
+                print(final_path)
+                running = False
+                
         elif action == "back":
             nav_result = navigator.go_back()
             if nav_result["success"]:
                 # Reset selection and scroll when going back
                 ui.selection_index = 0
                 ui.scroll_position = 0
+        
             else:
-                # TODO: Display nav_result["error"] in UI
-                pass
+                ui.error_message = nav_result["error"]
 
 
     ui.cleanup()
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='Navii: A terminal directory navigator.')
+    parser.add_argument('--project-root', type=str, help='Absolute path to the Navii project root directory.')
+    args, unknown = parser.parse_known_args()
+
+    if args.project_root:
+        sys.path.insert(0, os.path.join(args.project_root, 'src'))
+
     curses.wrapper(main)
