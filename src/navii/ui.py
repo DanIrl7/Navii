@@ -1,9 +1,9 @@
 import curses
 
 class UIEngine:
-    def __init__(self):
+    def __init__(self, stdscr):
         # ESSENTIAL - Curses setup
-        self.stdscr = curses.initscr()
+        self.stdscr = stdscr
         
         # ESSENTIAL - Terminal info
         self.max_y, self.max_x = self.stdscr.getmaxyx()
@@ -62,6 +62,8 @@ class UIEngine:
         # Quit
         elif key == 27 or key == ord('q'):
             return "quit"
+        elif key == curses.KEY_RESIZE:
+            return "resize"
         else:
             return None  # Unknown key
         
@@ -93,7 +95,6 @@ class UIEngine:
                 self.stdscr.addstr(row, 0, item, curses.color_pair(self.WHITE))
 
     def draw_ui(self, current_path, items):
-        self.stdscr.clear()
 
         # Draw header: Current Path
         self.stdscr.addstr(0, 0, current_path, curses.color_pair(self.CYAN))
@@ -103,11 +104,13 @@ class UIEngine:
 
         # Footer: Keybindings
         footer_text = "↑↓/[k][j]: Navigate | Enter[l]: Open | ⌫ Backspace: Go Back | q: Quit"
-        self.stdscr.addstr(self.max_y - 1, 0, footer_text, curses.color_pair(self.YELLOW))
-
+        try:
+            self.stdscr.addstr(self.max_y - 1, 0, footer_text, curses.color_pair(self.YELLOW))
+        except curses.error:
+            pass
+        
         # If there's an error message, display it above the footer
         if self.error_message:
             self.stdscr.addstr(self.max_y - 2, 0, f"Error: {self.error_message}", curses.color_pair(self.YELLOW))
-    
-        self.refresh()
+
 
