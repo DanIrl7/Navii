@@ -124,8 +124,13 @@ def main(stdscr):
                     print(os.path.join(current_path, items[ui.selection_index]))
                     running = False
             elif action == "back":
-                state = "home"
-                ui.selection_index = 0
+                nav_result = navigator.go_back()
+
+                if not nav_result["success"]:
+                    state = "home"
+                    ui.selection_index = 0
+                    ui.scroll_position = 0
+                    ui.error_message = None
 
     ui.cleanup()
 
