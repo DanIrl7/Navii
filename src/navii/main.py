@@ -1,14 +1,14 @@
 import curses
 import os
 import sys
-import argparse
 from .ui import UIEngine
 from .navigator import Navigator
 from .background import BackgroundEngine
 from .pathhandler import PathHandler
 
+
 # =====================================================================
-# 1. HELPER & ROUTING MODULES (Before Main)
+# 1. ARGUMENT PARSING
 # =====================================================================
 
 def parse_arguments():
@@ -26,7 +26,6 @@ def parse_arguments():
             return {"action": "jump_add"}
         else:
             return {"action": "jump_lookup", "name": sys.argv[2]}
-            
     elif subcommand == "memo":
         if len(sys.argv) == 2:
             return {"action": "ui", "state": "memo"}
@@ -34,45 +33,23 @@ def parse_arguments():
             return {"action": "memo_add"}
         else:
             return {"action": "memo_lookup", "name": sys.argv[2]}
-            
-    # Default to UI home screen for unknown commands
+
     return {"action": "ui", "state": "home"}
 
-def run_cli(args):
-    # Logic for CLI commands (jump/memo)
-    # No curses.wrapper here
-    print(f"Executing {args['action']}...")
-    sys.exit(0)
 
-def run_tui(args):
-    # Launch TUI
-    curses.wrapper(lambda stdscr: main(stdscr, initial_state=args["state"]))
+# =====================================================================
+# 2. MAIN TUI LOOP
+# =====================================================================
 
-def main_entry():
-    # This is the single entry point
-    args = parse_arguments()
-    
-    if args["action"] == "ui":
-        run_tui(args)
-    else:
-        run_cli(args)
-
-if __name__ == "__main__":
-    main_entry()
-
-
-def main(stdscr):
+def main(stdscr, initial_state="home"):  # <-- accepts initial_state now
     """
     Main controller loop for Navii.
-    Manages application state ('home' vs 'nav') and coordinates 
-    input between the UIEngine and the Navigator.
     """
-    # PathHandler.initialize_storage()
     ui = UIEngine(stdscr)
     bg_engine = BackgroundEngine(stdscr)
     navigator = Navigator()
 
-    state = start_mode if start_mode in ("cd", "jump", "memo") else "home"
+    state = initial_state  # <-- uses it here
     running = True
 
     while running:
@@ -88,22 +65,19 @@ def main(stdscr):
 
         # 2. Rendering (Layered)
         stdscr.clear()
-        bg_engine.draw()      # Background
-        ui.draw_ui(current_path, items) # Foreground (use current_path, not path)
+        bg_engine.draw()
+        ui.draw_ui(current_path, items)
         stdscr.refresh()
-        
+
         # 3. Input Handling
-        # ui.get_input() inside uses stdscr.getch()
         action = ui.get_input()
-        
-        # Check for resize specifically
-        if action == "resize": 
-            # Logic to handle resize signal
+
+        if action == "resize":
             ui.max_y, ui.max_x = stdscr.getmaxyx()
-            continue # Skip processing until next redraw
+            continue
         if action == "quit":
             running = False
-        
+
         elif state == "home":
             if action in ["up", "down"]:
                 ui.move_selection(action, len(items))
@@ -112,7 +86,7 @@ def main(stdscr):
                 if "cd" in selection:
                     state = "nav"
                     ui.selection_index = 0
-            
+
         elif state == "nav":
             if action in ["up", "down"]:
                 ui.move_selection(action, len(items))
@@ -129,7 +103,6 @@ def main(stdscr):
                     running = False
             elif action == "back":
                 nav_result = navigator.go_back()
-
                 if not nav_result["success"]:
                     state = "home"
                     ui.selection_index = 0
@@ -138,18 +111,32 @@ def main(stdscr):
 
     ui.cleanup()
 
+
+# =====================================================================
+# 3. ENTRY POINTS
+# =====================================================================
+
+def run_cli(args):
+    # Placeholder for CLI commands (jump add, memo add, etc.)
+    print(f"Executing {args['action']}...")
+    sys.exit(0)
+
+
+def run_tui(args):
+    curses.wrapper(lambda stdscr: main(stdscr, initial_state=args["state"]))
+
+
+def main_entry():
+    args = parse_arguments()
+    if args["action"] == "ui":
+        run_tui(args)
+    else:
+        run_cli(args)
+
+
+# =====================================================================
+# 4. SCRIPT ENTRY (keep this simple — just call main_entry)
+# =====================================================================
+
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Navii: A terminal directory navigator.')
-    parser.add_argument('--project-root', type=str)
-    args, remaining = parser.parse_known_args()
-
-    if args.project_root:
-        sys.path.insert(0, os.path.join(args.project_root, 'src'))
-
-    subcommand = remaining[0] if remaining else "cd"
-    if subcommand not in ("cd", "jump", "memo"):
-        print(f"Unknown command: {subcommand}. Use cd, jump, or memo.")
-        sys.exit(1)
-
-    # Pass the subcommand into main so it knows which mode to start in
-    curses.wrapper(lambda stdscr: main(stdscr, start_mode=subcommand))
+    main_entry()
