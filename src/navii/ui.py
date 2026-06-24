@@ -1,5 +1,6 @@
 import curses
 import pyfiglet
+import os
 
 class UIEngine:
     def __init__(self, stdscr):
@@ -35,6 +36,9 @@ class UIEngine:
         curses.init_pair(7, curses.COLOR_BLUE, curses.COLOR_BLACK)    # dim stars
         curses.init_pair(8, curses.COLOR_BLUE, curses.COLOR_BLUE)   # city silhouette
         curses.init_pair(9, curses.COLOR_BLUE, curses.COLOR_BLACK)    # horizon glow
+        curses.init_pair(10, curses.COLOR_YELLOW, curses.COLOR_BLACK) # Warm window light
+        curses.init_pair(11, curses.COLOR_WHITE, curses.COLOR_BLACK)  # Bright white office light
+        curses.init_pair(12, curses.COLOR_BLACK, curses.COLOR_BLACK) # Block character in menu 
 
         self.error_message = None
 
@@ -101,6 +105,173 @@ class UIEngine:
                 self.stdscr.addstr(row, 0, item, curses.color_pair(self.SELECTION))
             else:
                 self.stdscr.addstr(row, 0, item, curses.color_pair(self.WHITE))
+
+    
+    def _truncate(self, text, max_width):
+        """Truncate text with … if it exceeds max_width."""
+        if len(text) > max_width:
+            return text[:max_width - 1] + "…"
+        return text
+
+    def draw_cd_panel(self, current_path, items, full_paths, show_hidden):
+        """
+        Draw the CD navigator panel:
+          - Header with current path
+          - Scrollable list with icons
+          - Preview line (selected item's full path)
+          - Footer with keybindings
+          - Scrollbar indicator on the right
+        
+        full_paths: list of absolute paths parallel to items, used for icons
+        show_hidden: bool, shown in footer hint
+        """
+        from .icons import get_icon
+
+        max_y, max_x = self.stdscr.getmaxyx()
+
+        # Panel dimensions
+        panel_w = min(60, max_x - 4)
+        panel_h = min(22, max_y - 4)
+        panel_x = (max_x - panel_w) // 2
+        panel_y = (max_y - panel_h) // 2
+
+        # ── Box ─────────────────────────────────────────────────────────────
+        # Top border
+        top = "┌" + "─" * (panel_w - 2) + "┐"
+        try:
+            self.stdscr.addstr(panel_y, panel_x, top, curses.color_pair(self.CYAN))
+        except curses.error:
+            pass
+
+        # Side borders + blank fill
+        for row in range(1, panel_h - 1):
+            try:
+                self.stdscr.addstr(panel_y + row, panel_x,     "│", curses.color_pair(self.CYAN))
+                self.stdscr.addstr(panel_y + row, panel_x + panel_w - 1, "│", curses.color_pair(self.CYAN))
+            except curses.error:
+                pass
+
+        # Bottom border
+        bot = "└" + "─" * (panel_w - 2) + "┘"
+        try:
+            self.stdscr.addstr(panel_y + panel_h - 1, panel_x, bot, curses.color_pair(self.CYAN))
+        except curses.error:
+            pass
+
+        # ── Header ──────────────────────────────────────────────────────────
+        inner_w = panel_w - 4          # 2 for borders + 1 pad each side
+        header = "📂 " + self._truncate(current_path, inner_w - 3)
+        try:
+            self.stdscr.addstr(panel_y + 1, panel_x + 2, header, curses.color_pair(self.CYAN) | curses.A_BOLD)
+        except curses.error:
+            pass
+
+        # Divider under header
+        div = "├" + "─" * (panel_w - 2) + "┤"
+        try:
+            self.stdscr.addstr(panel_y + 2, panel_x, div, curses.color_pair(self.CYAN))
+        except curses.error:
+            pass
+
+        # ── List area ───────────────────────────────────────────────────────
+        # Rows available: panel_h - top(1) - header(1) - hdiv(1) - preview(1) - fdiv(1) - footer(1) - bottom(1) = panel_h - 7
+        list_rows = panel_h - 7
+        list_y    = panel_y + 3
+
+        # Auto-scroll
+        half = list_rows // 2
+        scroll = max(0, min(self.selection_index - half, len(items) - list_rows))
+
+        visible = items[scroll:scroll + list_rows]
+        visible_paths = full_paths[scroll:scroll + list_rows]
+
+        for i, (name, fpath) in enumerate(zip(visible, visible_paths)):
+            abs_idx = scroll + i
+            selected = abs_idx == self.selection_index
+
+            icon = get_icon(fpath)
+            # Emoji chars are double-width — place at even column, text at +3
+            # Use a space placeholder for the icon column to avoid alignment issues
+            icon_col  = panel_x + 2
+            arrow_col = panel_x + 4
+            name_col  = panel_x + 6
+
+            max_name = panel_w - 8   # leave room for icon + arrow + right border + scrollbar
+            display_name = self._truncate(name, max_name)
+
+            row_y = list_y + i
+            if row_y >= panel_y + panel_h - 4:
+                break
+
+            if selected:
+                attr = curses.color_pair(self.SELECTION)
+                # Fill the whole row for highlight
+                blank = " " * (panel_w - 2)
+                try:
+                    self.stdscr.addstr(row_y, panel_x + 1, blank, attr)
+                except curses.error:
+                    pass
+                try:
+                    self.stdscr.addstr(row_y, icon_col,  " ",           attr)
+                    self.stdscr.addstr(row_y, arrow_col, "▸",           attr)
+                    self.stdscr.addstr(row_y, name_col,  display_name,  attr)
+                except curses.error:
+                    pass
+            else:
+                attr = curses.color_pair(self.WHITE)
+                try:
+                    self.stdscr.addstr(row_y, icon_col,  " ",           attr)
+                    self.stdscr.addstr(row_y, arrow_col, " ",           attr)
+                    self.stdscr.addstr(row_y, name_col,  display_name,  attr)
+                except curses.error:
+                    pass
+
+        # ── Scrollbar ───────────────────────────────────────────────────────
+        if len(items) > list_rows:
+            sb_x = panel_x + panel_w - 2
+            bar_h = list_rows
+            thumb_pos = int(scroll / max(1, len(items) - list_rows) * (bar_h - 1))
+            for row in range(bar_h):
+                char = "█" if row == thumb_pos else "░"
+                try:
+                    self.stdscr.addstr(list_y + row, sb_x, char, curses.color_pair(self.CYAN))
+                except curses.error:
+                    pass
+
+        # ── Preview line ────────────────────────────────────────────────────
+        preview_y = panel_y + panel_h - 4
+        div2 = "├" + "─" * (panel_w - 2) + "┤"
+        try:
+            self.stdscr.addstr(preview_y, panel_x, div2, curses.color_pair(self.CYAN))
+        except curses.error:
+            pass
+
+        selected_name = items[self.selection_index] if items else ""
+        if selected_name == "..":
+            preview_path = os.path.dirname(current_path) or "/"
+        else:
+            preview_path = os.path.join(current_path, selected_name)
+        preview_text = "→ " + self._truncate(preview_path, inner_w - 2)
+        try:
+            self.stdscr.addstr(preview_y + 1, panel_x + 2, preview_text, curses.color_pair(self.YELLOW))
+        except curses.error:
+            pass
+
+        # ── Footer ──────────────────────────────────────────────────────────
+        div3 = "├" + "─" * (panel_w - 2) + "┤"
+        try:
+            self.stdscr.addstr(panel_y + panel_h - 2, panel_x, div3, curses.color_pair(self.CYAN))
+        except curses.error:
+            pass
+
+        hidden_hint = ". show-hidden" if not show_hidden else ". hide-hidden"
+        footer = f"↑↓ move  → enter  ← back  SPC jump  {hidden_hint}  q quit"
+        footer = self._truncate(footer, inner_w)
+        try:
+            self.stdscr.addstr(panel_y + panel_h - 1, panel_x + 1,
+                               footer, curses.color_pair(self.YELLOW))
+        except curses.error:
+            pass
     
     def get_logo_lines(self):
         fig = pyfiglet.figlet_format("navii", font="banner3-D")
@@ -126,6 +297,7 @@ class UIEngine:
         start_x = max(0, start_x)
 
         color = curses.color_pair(self.CYAN)
+        black_bg = curses.color_pair(self.WHITE)  # Uses pair 1, which has a black background
 
         # Top border
         try:
@@ -133,12 +305,26 @@ class UIEngine:
         except curses.error:
             pass
 
-        # Content rows
+        # --- NEW: Fill the empty vertical padding space at the top ---
+        for y_offset in range(1, padding_y + 1):
+            try:
+                self.stdscr.addstr(start_y + y_offset, start_x, '│', color)
+                self.stdscr.addstr(start_y + y_offset, start_x + 1, ' ' * (box_width - 2), black_bg)
+                self.stdscr.addstr(start_y + y_offset, start_x + box_width - 1, '│', color)
+            except curses.error:
+                pass
+
+        # Content rows (Now padded with explicit black background spacing)
         for i, line in enumerate(lines):
             row = start_y + 1 + padding_y + i
+            # Calculate left and right empty spaces to perfectly pad the line
+            left_spaces = ' ' * (padding_x + 1)
+            right_spaces = ' ' * (box_width - 2 - len(left_spaces) - len(line))
             try:
                 self.stdscr.addstr(row, start_x, '│', color)
-                self.stdscr.addstr(row, start_x + padding_x + 1, line, curses.color_pair(self.WHITE))
+                self.stdscr.addstr(row, start_x + 1, left_spaces, black_bg)
+                self.stdscr.addstr(row, start_x + 1 + len(left_spaces), line, black_bg)
+                self.stdscr.addstr(row, start_x + 1 + len(left_spaces) + len(line), right_spaces, black_bg)
                 self.stdscr.addstr(row, start_x + box_width - 1, '│', color)
             except curses.error:
                 pass
@@ -152,9 +338,13 @@ class UIEngine:
                 pass
             for i, line in enumerate(footer_lines):
                 row = divider_row + 1 + i
+                left_spaces = ' ' * (padding_x + 1)
+                right_spaces = ' ' * (box_width - 2 - len(left_spaces) - len(line))
                 try:
                     self.stdscr.addstr(row, start_x, '│', color)
-                    self.stdscr.addstr(row, start_x + padding_x + 1, line, curses.color_pair(self.YELLOW))
+                    self.stdscr.addstr(row, start_x + 1, left_spaces, black_bg)
+                    self.stdscr.addstr(row, start_x + 1 + len(left_spaces), line, curses.color_pair(self.YELLOW))
+                    self.stdscr.addstr(row, start_x + 1 + len(left_spaces) + len(line), right_spaces, black_bg)
                     self.stdscr.addstr(row, start_x + box_width - 1, '│', color)
                 except curses.error:
                     pass
@@ -166,7 +356,7 @@ class UIEngine:
         except curses.error:
             pass
 
-        return start_y, start_x, box_width  # return position so we can draw menu items over it
+        return start_y, start_x, box_width
 
     def draw_home(self, items):
         """Draw the full home screen — logo + menu panel"""
