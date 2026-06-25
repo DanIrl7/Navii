@@ -6,6 +6,7 @@ from .navigator import Navigator
 from .background import BackgroundEngine
 from .pathhandler import PathHandler
 from .icons import get_icon
+from .jumpstore import list_jumps, find_jump, add_jump, delete_jump
 
 # =====================================================================
 # 1. ARGUMENT PARSING
@@ -41,52 +42,54 @@ def parse_arguments():
 # 2. MAIN TUI LOOP
 # =====================================================================
 
-def main(stdscr, initial_state="home"):
+def main(stdscr, mode=None):
     """
     Main controller loop for Navii.
+    mode — optional starting state: "cd", "jump", "memo"
     """
-  
-
-    ui        = UIEngine(stdscr)
+    ui = UIEngine(stdscr)
     bg_engine = BackgroundEngine(stdscr)
     navigator = Navigator()
 
-    state   = initial_state
+    # Determine starting state
+    if mode == "jump":
+        state = "jump"
+    elif mode == "cd":
+        state = "nav"
+    else:
+        state = "home"
+
+    confirm_delete = False   # used by jump (and later memo) delete flow
     running = True
 
     while running:
-        max_y, max_x = stdscr.getmaxyx()
-
-        # ── State Logic ─────────────────────────────────────────────────────
+        # ── 1. State data ──────────────────────────────────
         if state == "home":
-            items      = ["cd - Directory Navigator", "jump - Saved Locations", "memo - Saved Commands"]
+            items = ["cd - Directory Navigator", "jump - Saved Locations", "memo - Saved Commands"]
             current_path = "Navii Home"
-            full_paths   = []
 
-        else:   # state == "nav"
-            nav_data     = navigator.list_items()
-            items        = nav_data["items"]
+        elif state == "nav":
+            nav_data = navigator.list_items()
+            items = nav_data["items"]
             current_path = navigator.get_current_path()
-            full_paths   = [
-                os.path.join(current_path, name) if name != ".."
-                else os.path.dirname(current_path)
-                for name in items
-            ]
-            if not nav_data["success"]:
-                ui.error_message = nav_data["error"]
+            ui.error_message = None if nav_data["success"] else nav_data["error"]
 
-        # ── Rendering ───────────────────────────────────────────────────────
-        stdscr.erase()                        # erase() instead of clear() = less flicker
+        elif state == "jump":
+            jumps = list_jumps()   # fresh read each frame (cheap, small file)
+            current_path = "jump"  # sentinel so draw_ui knows which panel to show
+
+        # ── 2. Render ──────────────────────────────────────
+        stdscr.erase()
         bg_engine.draw()
 
-        if state == "home":
-            ui.draw_ui(current_path, items)
+        if state == "jump":
+            ui.draw_jump_panel(jumps, confirm_delete=confirm_delete)
         else:
-            ui.draw_cd_panel(current_path, items, full_paths, navigator.show_hidden)
+            ui.draw_ui(current_path, items)
 
         stdscr.refresh()
 
-        # ── Input ───────────────────────────────────────────────────────────
+        # ── 3. Input ───────────────────────────────────────
         action = ui.get_input()
 
         if action == "resize":
@@ -97,53 +100,72 @@ def main(stdscr, initial_state="home"):
         if action == "quit":
             running = False
 
+        # ── Home ───────────────────────────────────────────
         elif state == "home":
             if action in ("up", "down"):
                 ui.move_selection(action, len(items))
             elif action == "enter":
-                sel = items[ui.selection_index]
-                if "cd" in sel:
+                selection = items[ui.selection_index]
+                if "cd" in selection:
                     state = "nav"
-                    ui.selection_index  = 0
-                    ui.scroll_position  = 0
+                    ui.selection_index = 0
+                elif "jump" in selection:
+                    state = "jump"
+                    ui.selection_index = 0
+                    confirm_delete = False
 
+        # ── CD nav ─────────────────────────────────────────
         elif state == "nav":
             if action in ("up", "down"):
                 ui.move_selection(action, len(items))
-
             elif action == "enter":
                 if items:
-                    result = navigator.go_forward(items[ui.selection_index])
-                    if result["success"]:
-                        ui.selection_index = 0
-                        ui.scroll_position = 0
+                    nav_result = navigator.go_forward(items[ui.selection_index])
+                    if nav_result["success"]:
+                        ui.selection_index, ui.scroll_position = 0, 0
                     else:
-                        ui.error_message = result["error"]
-
-            elif action == "back":
-                result = navigator.go_back()
-                if result["success"]:
-                    ui.selection_index = 0
-                    ui.scroll_position = 0
-                else:
-                    ui.error_message = result["error"]
-
-            elif action == "toggle_hidden":
-                navigator.toggle_hidden()
-                ui.selection_index = 0
-                ui.scroll_position = 0
-
-            elif action == "confirm":        # Space — jump here and exit
+                        ui.error_message = nav_result["error"]
+            elif action == "confirm":
                 if items:
-                    sel = items[ui.selection_index]
-                    if sel == "..":
-                        target = os.path.dirname(current_path)
-                    elif os.path.isdir(os.path.join(current_path, sel)):
-                        target = os.path.join(current_path, sel)
-                    else:
-                        target = current_path   # Space on a file → jump to its directory
-                    print(target)
+                    print(os.path.join(current_path, items[ui.selection_index]))
                     running = False
+            elif action == "back":
+                state = "home"
+                ui.selection_index = 0
+
+        # ── Jump ───────────────────────────────────────────
+        elif state == "jump":
+
+            if confirm_delete:
+                # Waiting for y/n
+                raw = ui.stdscr.getch()
+                if raw == ord('y'):
+                    if jumps:
+                        delete_jump(jumps[ui.selection_index]["name"])
+                        ui.selection_index = max(0, ui.selection_index - 1)
+                    confirm_delete = False
+                elif raw in (ord('n'), 27):   # n or Esc
+                    confirm_delete = False
+
+            else:
+                if action in ("up", "down"):
+                    ui.move_selection(action, len(jumps))
+                elif action == "enter":
+                    if jumps:
+                        jump = jumps[ui.selection_index]
+                        print(f"CD:{jump['path']}")
+                        running = False
+                elif action == "back":
+                    state = "home"
+                    ui.selection_index = 0
+                    confirm_delete = False
+                elif action == "delete":
+                    if jumps:
+                        confirm_delete = True
+                # 'd' key — not mapped in map_key() yet, read raw
+                else:
+                    # We need to catch 'd' — handle it via raw key check
+                    pass
 
     ui.cleanup()
 
@@ -153,13 +175,38 @@ def main(stdscr, initial_state="home"):
 # =====================================================================
 
 def run_cli(args):
-    # Placeholder for CLI commands (jump add, memo add, etc.)
-    print(f"Executing {args['action']}...")
-    sys.exit(0)
+    if action == "jump":
+        sub = args[0] if args else None         
+
+        if sub == "add":
+            # Prompt inline — no curses
+            path = os.getcwd()
+        name = input("Name for this location: ").strip()
+        if not name:
+            print("Cancelled.")
+            return
+        desc = input("Description (optional): ").strip()
+        success, err = add_jump(name, desc, path)
+        if success:
+            print(f"Saved '{name}' → {path}")
+        else:
+            print(f"Error saving jump: {err}")
+
+    elif sub:
+        # navi jump <name> — no UI, just print CD: for shell wrapper
+        jump = find_jump(sub)
+        if jump:
+            print(f"CD:{jump['path']}")
+        else:
+            print(f"navi: no jump named '{sub}'", file=sys.stderr)
+
+    else:
+        # No sub-arg — fall through to TUI
+        run_tui(curses.wrapper, mode="jump")
 
 
 def run_tui(args):
-    curses.wrapper(lambda stdscr: main(stdscr, initial_state=args["state"]))
+    curses.wrapper(lambda stdscr: main(stdscr, mode=args["state"]))
 
 
 def main_entry():

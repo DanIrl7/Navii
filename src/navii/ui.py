@@ -76,6 +76,8 @@ class UIEngine:
             return "quit"
         elif key == curses.KEY_RESIZE:
             return "resize"
+        elif key == ord('d'):
+            return "delete"
         else:
             return None  # Unknown key
         
@@ -272,6 +274,124 @@ class UIEngine:
                                footer, curses.color_pair(self.YELLOW))
         except curses.error:
             pass
+
+    
+    def draw_jump_panel(self, jumps, confirm_delete=False):
+        """
+        Draw the Jump module panel.
+        jumps         — list of dicts: {name, desc, path}
+        confirm_delete — if True, show y/n confirmation row instead of footer
+        """
+        max_y, max_x = self.stdscr.getmaxyx()
+
+        # ── Panel dimensions ───────────────────────────────────
+        panel_w = min(60, max_x - 4)
+        panel_h = min(18, max_y - 4)
+        start_y = (max_y - panel_h) // 2
+        start_x = (max_x - panel_w) // 2
+
+        # ── Box border ─────────────────────────────────────────
+        # Top edge
+        self.stdscr.addstr(start_y, start_x,
+            "┌" + "─" * (panel_w - 2) + "┐",
+            curses.color_pair(self.CYAN))
+        # Side edges + interior
+        for r in range(1, panel_h - 1):
+            self.stdscr.addstr(start_y + r, start_x, "│", curses.color_pair(self.CYAN))
+            self.stdscr.addstr(start_y + r, start_x + panel_w - 1, "│", curses.color_pair(self.CYAN))
+        # Bottom edge
+        self.stdscr.addstr(start_y + panel_h - 1, start_x,
+            "└" + "─" * (panel_w - 2) + "┘",
+            curses.color_pair(self.CYAN))
+
+        # ── Header ─────────────────────────────────────────────
+        count_str = f"{len(jumps)} saved"
+        header_left = " 📌 saved locations"
+        # Truncate if needed, then pad to align count on right
+        inner_w = panel_w - 2
+        header = header_left.ljust(inner_w - len(count_str)) + count_str
+        header = self._truncate(header, inner_w)
+        self.stdscr.addstr(start_y + 1, start_x + 1, header, curses.color_pair(self.CYAN))
+
+        # Divider below header
+        self.stdscr.addstr(start_y + 2, start_x,
+            "├" + "─" * (panel_w - 2) + "┤",
+            curses.color_pair(self.CYAN))
+
+        # ── Empty state ────────────────────────────────────────
+        if not jumps:
+            empty = " No saved locations yet."
+            self.stdscr.addstr(start_y + 4, start_x + 1,
+                self._truncate(empty, inner_w),
+                curses.color_pair(self.WHITE))
+            hint = " Use 'navi jump add' to save a location."
+            self.stdscr.addstr(start_y + 5, start_x + 1,
+                self._truncate(hint, inner_w),
+                curses.color_pair(self.YELLOW))
+
+        # ── List rows ──────────────────────────────────────────
+        # Each jump takes 2 rows: name+desc line, then indented path line
+        # So viewport fits (panel_h - 6) // 2 entries  (header=2, divider=1, footer=2, bottom=1)
+        list_start_row = start_y + 3
+        footer_row     = start_y + panel_h - 3
+        available_rows = footer_row - list_start_row          # rows available for list
+        rows_per_entry = 2
+        viewport_entries = max(1, available_rows // rows_per_entry)
+
+        # Clamp scroll so selection stays visible
+        scroll = max(0, self.selection_index - (viewport_entries - 1))
+        scroll = min(scroll, max(0, len(jumps) - viewport_entries))
+
+        for slot, ji in enumerate(range(scroll, min(scroll + viewport_entries, len(jumps)))):
+            entry = jumps[ji]
+            selected = (ji == self.selection_index)
+            row_y = list_start_row + slot * rows_per_entry
+
+            if row_y >= footer_row:
+                break
+
+            # Row 1: ▸ indicator + name (bold/highlight) + description
+            indicator = "▸ " if selected else "  "
+            name_col  = curses.color_pair(self.SELECTION) if selected else curses.color_pair(self.WHITE)
+            desc_col  = curses.color_pair(self.CYAN) if selected else curses.color_pair(self.WHITE)
+
+            name_str = self._truncate(entry.get("name", ""), 12).ljust(12)
+            desc_str = self._truncate(entry.get("desc", ""), inner_w - 16)
+            line1 = f"{indicator}{name_str}  {desc_str}"
+            self.stdscr.addstr(row_y, start_x + 1,
+                self._truncate(line1, inner_w), name_col)
+
+            # Row 2: indented path (dimmer)
+            if row_y + 1 < footer_row:
+                path_str = "    " + self._truncate(entry.get("path", ""), inner_w - 4)
+                self.stdscr.addstr(row_y + 1, start_x + 1,
+                    path_str.ljust(inner_w)[:inner_w],
+                    curses.color_pair(self.YELLOW))
+
+        # ── Divider above footer ───────────────────────────────
+        self.stdscr.addstr(footer_row, start_x,
+            "├" + "─" * (panel_w - 2) + "┤",
+            curses.color_pair(self.CYAN))
+
+        # ── Footer / confirmation ──────────────────────────────
+        if confirm_delete:
+            sel_name = jumps[self.selection_index]["name"] if jumps else ""
+            confirm_text = self._truncate(
+                f" Delete '{sel_name}'?  [y] yes   [n] no",
+                inner_w)
+            self.stdscr.addstr(footer_row + 1, start_x + 1,
+                confirm_text.ljust(inner_w)[:inner_w],
+                curses.color_pair(self.YELLOW))
+        else:
+            footer = " ↑↓ move   Enter jump   d delete   q quit"
+            self.stdscr.addstr(footer_row + 1, start_x + 1,
+                self._truncate(footer, inner_w),
+                curses.color_pair(self.YELLOW))
+
+        # ── Bottom border ──────────────────────────────────────
+        self.stdscr.addstr(start_y + panel_h - 1, start_x,
+            "└" + "─" * (panel_w - 2) + "┘",
+            curses.color_pair(self.CYAN))
     
     def get_logo_lines(self):
         fig = pyfiglet.figlet_format("navii", font="banner3-D")
