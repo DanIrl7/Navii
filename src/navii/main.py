@@ -249,6 +249,35 @@ def main(stdscr, initial_state="home"):
     ui.cleanup()
 
 
+def run_cli(subcommand, name):
+    from .jumpstore import find_jump
+    from .memostore import find_memo
+    import os
+
+    if subcommand == "jump" and name:
+        entry = find_jump(name)
+        if entry:
+            path = os.path.expanduser(entry.get("path", ""))
+            sys.stdout.write("CD:" + path + "\n")
+            sys.stdout.flush()
+            return True
+        else:
+            sys.stderr.write(f"navi: no jump named '{name}'\n")
+            sys.exit(1)
+
+    if subcommand == "memo" and name:
+        entry = find_memo(name)
+        if entry:
+            sys.stdout.write("EXEC:" + entry.get("cmd", "") + "\n")
+            sys.stdout.flush()
+            return True
+        else:
+            sys.stderr.write(f"navi: no memo named '{name}'\n")
+            sys.exit(1)
+
+    return False
+
+
 def run_tui(initial_state="home"):
     if sys.platform == "win32":
         curses.wrapper(lambda s: main(s, initial_state))
@@ -272,10 +301,16 @@ if __name__ == "__main__":
     parser.add_argument('--project-root', type=str)
     parser.add_argument('subcommand', nargs='?', default='home',
                         choices=['home', 'cd', 'jump', 'memo', 'theme'])
-    args, _ = parser.parse_known_args()
+    parser.add_argument('name', nargs='?', default=None)   # ← the lookup name
+    args = parser.parse_args()
 
     if args.project_root:
         sys.path.insert(0, os.path.join(args.project_root, 'src'))
 
+    # If a name was given, try the CLI lookup first — no TUI needed
+    if run_cli(args.subcommand, args.name):
+        sys.exit(0)
+
+    # Otherwise launch the TUI at the right starting state
     state_map = {'home': 'home', 'cd': 'nav', 'jump': 'jump', 'memo': 'memo', 'theme': 'theme'}
     run_tui(state_map.get(args.subcommand, 'home'))
