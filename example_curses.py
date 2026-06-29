@@ -1,4 +1,4 @@
-from src.navii.ui import UIEngine
+from src.nyxx.ui import UIEngine
 import time
 
 try:

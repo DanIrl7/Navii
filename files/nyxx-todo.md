@@ -1,15 +1,15 @@
-# navi — Comprehensive Todo List
+# nyxx — Comprehensive Todo List
 
 ---
 
 ## Phase 1 — Foundation & Setup
 - [ ] Install `windows-curses` (`pip install windows-curses`)
 - [ ] Install `pyfiglet` (`pip install pyfiglet`)
-- [ ] Create `~/.navi/` config directory
-- [ ] Create empty `~/.navi/jumps.json` (default `[]`)
-- [ ] Create empty `~/.navi/memos.json` (default `[]`)
+- [ ] Create `~/.nyxx/` config directory
+- [ ] Create empty `~/.nyxx/jumps.json` (default `[]`)
+- [ ] Create empty `~/.nyxx/memos.json` (default `[]`)
 - [ ] Set up shell wrapper in `.bashrc` / `.zshrc`
-- [ ] Build subcommand router in `navi.py` (parse `sys.argv` to dispatch `cd`, `jump`, `memo`)
+- [ ] Build subcommand router in `nyxx.py` (parse `sys.argv` to dispatch `cd`, `jump`, `memo`)
 
 ---
 
@@ -24,7 +24,7 @@
 
 ---
 
-## Phase 3 — Home Screen (`navi`)
+## Phase 3 — Home Screen (`nyxx`)
 - [ ] Generate ASCII block letter logo using `pyfiglet` (`font="banner3-D"` or similar)
 - [ ] Draw centered panel box using box-drawing characters (`┌─┐│└─┘`)
 - [ ] Calculate terminal center (`h//2`, `w//2`) and draw panel relative to it
@@ -38,7 +38,7 @@
 
 ---
 
-## Phase 4 — CD Module (`navi cd`)
+## Phase 4 — CD Module (`nyxx cd`)
 - [ ] List all files and directories in current working directory
 - [ ] Build extension-to-emoji icon map (`.py` → 🐍, `.md` → 📝, etc.)
 - [ ] Show `🔼 ..` as first entry (go up)
@@ -55,30 +55,30 @@
 
 ---
 
-## Phase 5 — Jump Module (`navi jump`)
-- [ ] Load saved locations from `~/.navi/jumps.json`
+## Phase 5 — Jump Module (`nyxx jump`)
+- [ ] Load saved locations from `~/.nyxx/jumps.json`
 - [ ] Display each entry: name (bold), description, path (dimmer, indented)
 - [ ] Show empty state message if no locations saved yet
 - [ ] Handle `↑` `↓` to move selection
 - [ ] Handle `Enter` — print `CD:/saved/path` and exit for shell wrapper
 - [ ] Handle `d` — delete selected entry with confirmation prompt (`y/n`)
 - [ ] Handle `q` / `Esc` — quit without action
-- [ ] Handle `navi jump <name>` (no UI) — look up name, print `CD:/path`, exit
-- [ ] Handle `navi jump add` — save current directory, prompt for name + description, write to `jumps.json`
+- [ ] Handle `nyxx jump <name>` (no UI) — look up name, print `CD:/path`, exit
+- [ ] Handle `nyxx jump add` — save current directory, prompt for name + description, write to `jumps.json`
 - [ ] Show count of saved locations in panel header
 
 ---
 
-## Phase 6 — Memo Module (`navi memo`)
-- [ ] Load saved commands from `~/.navi/memos.json`
+## Phase 6 — Memo Module (`nyxx memo`)
+- [ ] Load saved commands from `~/.nyxx/memos.json`
 - [ ] Display each entry: name (bold), description, command (italic/dimmer, prefixed with `$`)
 - [ ] Show empty state message if no commands saved yet
 - [ ] Handle `↑` `↓` to move selection
 - [ ] Handle `Enter` — print `EXEC:command` and exit for shell wrapper
 - [ ] Handle `d` — delete selected entry with confirmation prompt (`y/n`)
 - [ ] Handle `q` / `Esc` — quit without action
-- [ ] Handle `navi memo <name>` (no UI) — look up name, print `EXEC:command`, exit
-- [ ] Handle `navi memo add` — prompt for name, description, command in sequence, write to `memos.json`
+- [ ] Handle `nyxx memo <name>` (no UI) — look up name, print `EXEC:command`, exit
+- [ ] Handle `nyxx memo add` — prompt for name, description, command in sequence, write to `memos.json`
 - [ ] Show count of saved commands in panel header
 
 ---
@@ -89,7 +89,7 @@
 - [ ] Handle `CD:` prefix in wrapper — run `cd /path`
 - [ ] Handle `EXEC:` prefix in wrapper — run `eval "command"`
 - [ ] Handle empty output (user quit) — do nothing
-- [ ] Test wrapper with `navi cd`, `navi jump <name>`, `navi memo <name>`
+- [ ] Test wrapper with `nyxx cd`, `nyxx jump <name>`, `nyxx memo <name>`
 
 ---
 
@@ -107,14 +107,14 @@
 - [ ] Define a theme data structure (background chars, colors, panel colors)
 - [ ] Implement starry night theme (current default)
 - [ ] Implement at least 2 more themes (e.g. vaporwave, matrix)
-- [ ] Save chosen theme to `~/.navi/config.json`
-- [ ] Allow theme selection from home screen or via `navi theme` command
+- [ ] Save chosen theme to `~/.nyxx/config.json`
+- [ ] Allow theme selection from home screen or via `nyxx theme` command
 
 ---
 
 ## Phase 10 — Install Script (`install.sh`)
-- [ ] Create `~/.navi/` directory if it doesn't exist
-- [ ] Download `navi.py` from GitHub raw URL
+- [ ] Create `~/.nyxx/` directory if it doesn't exist
+- [ ] Download `nyxx.py` from GitHub raw URL
 - [ ] Create empty `jumps.json` and `memos.json`
 - [ ] Detect shell and append wrapper function to correct config file
 - [ ] Check Python 3 is installed, warn if not
@@ -129,5 +129,5 @@
 - [ ] Add keybinding table
 - [ ] Add manual install instructions as fallback
 - [ ] Add "how to add a theme" section
-- [ ] Set up GitHub repo with `navi.py`, `install.sh`, `README.md`
+- [ ] Set up GitHub repo with `nyxx.py`, `install.sh`, `README.md`
 - [ ] Add a LICENSE file (MIT recommended)

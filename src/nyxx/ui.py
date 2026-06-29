@@ -383,7 +383,7 @@ class UIEngine:
                     curses.color_pair(self.WHITE))
             except curses.error:
                 pass
-            hint = " Use 'navi jump add' to save a location."
+            hint = " Use 'nyxx jump add' to save a location."
             try:
                 self.stdscr.addstr(start_y + 5, start_x + 1,
                     self._truncate(hint, inner_w),
@@ -520,7 +520,7 @@ class UIEngine:
                     self._truncate(" No saved commands yet.", inner_w),
                     curses.color_pair(self.WHITE))
                 self.stdscr.addstr(start_y + 5, start_x + 1,
-                    self._truncate(" Use 'navi memo add' to save a command.", inner_w),
+                    self._truncate(" Use 'nyxx memo add' to save a command.", inner_w),
                     curses.color_pair(self.YELLOW))
             except curses.error:
                 pass
@@ -602,7 +602,7 @@ class UIEngine:
             pass
 
     def get_logo_lines(self):
-        fig = pyfiglet.figlet_format("navii", font="banner3-D")
+        fig = pyfiglet.figlet_format("nyxx", font="banner3-D")
         return fig.splitlines()
 
     def draw_panel(self, lines, footer_lines=None):
@@ -854,7 +854,7 @@ class UIEngine:
             pass
 
     def draw_ui(self, current_path, items):
-        if current_path == "Navii Home":
+        if current_path == "Nyxx Home":
             self.draw_home(items)
             return
 

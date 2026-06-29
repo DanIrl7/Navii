@@ -1,7 +1,7 @@
 import os
 import json
 
-JUMPS_PATH = os.path.expanduser("~/.navi/jumps.json")
+JUMPS_PATH = os.path.expanduser("~/.nyxx/jumps.json")
 
 def _load():
     """Load jumps list from disk. Returns [] if file missing or invalid."""

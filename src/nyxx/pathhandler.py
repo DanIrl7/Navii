@@ -23,7 +23,7 @@ class PathHandler:
 
     @staticmethod
     def initialize_storage():
-        navi_dir = os.path.expanduser("~/.navi")
+        navi_dir = os.path.expanduser("~/.nyxx")
         if not os.path.exists(navi_dir):
             os.makedirs(navi_dir)
 

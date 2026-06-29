@@ -40,7 +40,7 @@ def main(stdscr, initial_state="home"):
                 "memo - Saved Commands",
                 "theme - Change Theme",
             ]
-            current_path = "Navii Home"
+            current_path = "Nyxx Home"
 
         elif state == "nav":
             nav_data = navigator.list_items()
@@ -74,7 +74,7 @@ def main(stdscr, initial_state="home"):
         bg_engine.draw()
 
         if state == "home":
-            ui.draw_ui("Navii Home", items)
+            ui.draw_ui("Nyxx Home", items)
         elif state == "nav":
             ui.draw_cd_panel(current_path, items, full_paths, navigator.show_hidden)
         elif state == "jump":
@@ -250,11 +250,28 @@ def main(stdscr, initial_state="home"):
 
 
 def run_cli(subcommand, name):
-    from .jumpstore import find_jump
-    from .memostore import find_memo
+    from .jumpstore import find_jump, add_jump
+    from .memostore import find_memo, add_memo
     import os
 
     if subcommand == "jump" and name:
+        if name == "add":
+            print("--- Add New Jump ---")
+            j_name = input("Name: ").strip()
+            if j_name.lower() == "add":
+                print("Error: Cannot name a jump 'add'.")
+                return True
+            j_desc = input("Description: ").strip()
+            j_path = input(f"Path [default: {os.getcwd()}]: ").strip()
+            if not j_path:
+                j_path = os.getcwd()
+            success, err = add_jump(j_name, j_desc, j_path)
+            if success:
+                print(f"Jump '{j_name}' saved.")
+            else:
+                print(f"Error saving jump: {err}")
+            return True
+            
         entry = find_jump(name)
         if entry:
             path = os.path.expanduser(entry.get("path", ""))
@@ -262,17 +279,35 @@ def run_cli(subcommand, name):
             sys.stdout.flush()
             return True
         else:
-            sys.stderr.write(f"navi: no jump named '{name}'\n")
+            sys.stderr.write(f"nyxx: no jump named '{name}'\n")
             sys.exit(1)
 
     if subcommand == "memo" and name:
+        if name == "add":
+            print("--- Add New Memo ---")
+            m_name = input("Name: ").strip()
+            if m_name.lower() == "add":
+                print("Error: Cannot name a memo 'add'.")
+                return True
+            m_desc = input("Description: ").strip()
+            m_cmd = input("Command: ").strip()
+            if not m_cmd:
+                print("Error: Command cannot be empty.")
+                return True
+            success, err = add_memo(m_name, m_desc, m_cmd)
+            if success:
+                print(f"Memo '{m_name}' saved.")
+            else:
+                print(f"Error saving memo: {err}")
+            return True
+            
         entry = find_memo(name)
         if entry:
             sys.stdout.write("EXEC:" + entry.get("cmd", "") + "\n")
             sys.stdout.flush()
             return True
         else:
-            sys.stderr.write(f"navi: no memo named '{name}'\n")
+            sys.stderr.write(f"nyxx: no memo named '{name}'\n")
             sys.exit(1)
 
     return False
@@ -297,7 +332,7 @@ def run_tui(initial_state="home"):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Navii: A terminal directory navigator.')
+    parser = argparse.ArgumentParser(description='Nyxx: A terminal directory navigator.')
     parser.add_argument('--project-root', type=str)
     parser.add_argument('subcommand', nargs='?', default='home',
                         choices=['home', 'cd', 'jump', 'memo', 'theme'])

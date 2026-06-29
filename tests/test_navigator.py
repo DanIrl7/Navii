@@ -1,8 +1,8 @@
 import sys
 import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from src.navii.navigator import Navigator
-from src.navii.pathhandler import PathHandler
+from src.nyxx.navigator import Navigator
+from src.nyxx.pathhandler import PathHandler
 
 class TestNavigator:
     def test_init_starts_at_home(self):

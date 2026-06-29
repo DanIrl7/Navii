@@ -1,8 +1,8 @@
-navi() {
-    # Interactive CLI subcommands (navi jump add / navi memo add) need the
+nyxx() {
+    # Interactive CLI subcommands (nyxx jump add / nyxx memo add) need the
     # terminal for input() prompts, so run them directly without capturing.
     if [[ "$1" == "jump" && "$2" == "add" ]] || [[ "$1" == "memo" && "$2" == "add" ]]; then
-        PYTHONPATH="." python -m src.navii.main "$@"
+        PYTHONPATH="." python -m src.nyxx.main "$@"
         return
     fi
 
@@ -10,7 +10,7 @@ navi() {
     # Curses draws to /dev/tty directly (see run_tui in main.py), so only the
     # single CD:/EXEC: line reaches this variable via $() capture.
     local output
-    output=$(PYTHONPATH="." python -m src.navii.main "$@" 2>/dev/null)
+    output=$(PYTHONPATH="." python -m src.nyxx.main "$@" 2>/dev/null)
 
     # Nothing printed — user quit without selecting anything
     if [ -z "$output" ]; then
@@ -20,7 +20,7 @@ navi() {
     # CD: prefix — change directory
     if [[ "$output" == CD:* ]]; then
         local target="${output#CD:}"
-        cd "$target" || echo "navi: cd failed: $target"
+        cd "$target" || echo "nyxx: cd failed: $target"
         return
     fi
 
@@ -33,5 +33,5 @@ navi() {
     fi
 
     # Unexpected output — print it so nothing is silently lost
-    echo "navi: unexpected output: $output"
+    echo "nyxx: unexpected output: $output"
 }

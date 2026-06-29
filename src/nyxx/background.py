@@ -1,4 +1,4 @@
-# src/navii/background.py
+# src/nyxx/background.py
 
 import curses
 import random

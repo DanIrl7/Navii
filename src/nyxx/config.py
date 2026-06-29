@@ -1,7 +1,7 @@
 import os
 import json
 
-CONFIG_PATH = os.path.expanduser("~/.navi/config.json")
+CONFIG_PATH = os.path.expanduser("~/.nyxx/config.json")
 
 DEFAULTS = {
     "theme":          "starry night",   # kept for backward compat

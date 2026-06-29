@@ -1,4 +1,4 @@
-# src/navii/icons.py
+# src/nyxx/icons.py
 
 import os
 

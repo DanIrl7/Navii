@@ -11,7 +11,7 @@ export default function NaviScreens() {
   const cdEntries = [
     { icon: "🔼", name: ".."              },
     { icon: "📁", name: "documents"       },
-    { icon: "📁", name: "navii"           },
+    { icon: "📁", name: "nyxx"           },
     { icon: "📁", name: "downloads"       },
     { icon: "🐍", name: "main.py"         },
     { icon: "📝", name: "README.md"       },
@@ -202,7 +202,7 @@ export default function NaviScreens() {
           <span style={{width:12,height:12,borderRadius:"50%",background:"#2e1212",display:"inline-block"}}/>
           <span style={{width:12,height:12,borderRadius:"50%",background:"#2e2412",display:"inline-block"}}/>
           <span style={{width:12,height:12,borderRadius:"50%",background:"#12261a",display:"inline-block"}}/>
-          <span style={{fontSize:11,color:"#20204a",marginLeft:10,letterSpacing:3}}>navi — {screen}</span>
+          <span style={{fontSize:11,color:"#20204a",marginLeft:10,letterSpacing:3}}>nyxx — {screen}</span>
         </div>
         <div style={{position:"relative"}}>
           <canvas ref={canvasRef} width={680} height={440} style={{display:"block"}}/>

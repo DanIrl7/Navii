@@ -1,8 +1,8 @@
-# src/navii/memostore.py
+# src/nyxx/memostore.py
 import os
 import json
 
-MEMOS_PATH = os.path.expanduser("~/.navi/memos.json")
+MEMOS_PATH = os.path.expanduser("~/.nyxx/memos.json")
 
 def _load():
     """Load memos list from disk. Returns [] if file missing or invalid."""
